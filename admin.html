@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Administrador - Sistema de Reservas</title>
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .stat-icon {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            font-size: 3rem;
+            opacity: 0.3;
+        }
+        .badge-pending {
+            background-color: #ffc107;
+            color: #000;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+        .badge-confirmed {
+            background-color: #28a745;
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+        .badge-cancelled {
+            background-color: #dc3545;
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+        .table thead th {
+            background-color: #667eea;
+            color: white;
+        }
+        .btn-action {
+            margin: 0 2px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-calendar-check me-2"></i>
+                Panel Administrador
+            </a>
+            <div class="navbar-nav ms-auto">
+                <span class="nav-link text-white" id="userNameDisplay">
+                    <i class="fas fa-user me-1"></i>
+                    Cargando...
+                </span>
+                <button class="btn btn-light btn-sm" onclick="logout()">
+                    <i class="fas fa-sign-out-alt me-1"></i>
+                    Cerrar Sesión
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenido principal -->
+    <div class="container-fluid py-4">
+        <!-- Alertas -->
+        <div id="alertContainer"></div>
+
+        <!-- Tarjetas de estadísticas -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <i class="fas fa-calendar-check stat-icon"></i>
+                    <div class="stat-value" id="statTotal">0</div>
+                    <div class="stat-label">Total Reservas</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card" style="background: linear-gradient(135deg, #ffc107, #ff9800);">
+                    <i class="fas fa-clock stat-icon"></i>
+                    <div class="stat-value" id="statPending">0</div>
+                    <div class="stat-label">Pendientes</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card" style="background: linear-gradient(135deg, #28a745, #20c997);">
+                    <i class="fas fa-check-circle stat-icon"></i>
+                    <div class="stat-value" id="statConfirmed">0</div>
+                    <div class="stat-label">Confirmadas</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card" style="background: linear-gradient(135deg, #dc3545, #c82333);">
+                    <i class="fas fa-times-circle stat-icon"></i>
+                    <div class="stat-value" id="statCancelled">0</div>
+                    <div class="stat-label">Canceladas</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pestañas -->
+        <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active" id="reservations-tab" data-bs-toggle="tab" data-bs-target="#reservations">
+                    <i class="fas fa-calendar me-2"></i>Reservas
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users">
+                    <i class="fas fa-users me-2"></i>Usuarios
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="stats-tab" data-bs-toggle="tab" data-bs-target="#stats">
+                    <i class="fas fa-chart-bar me-2"></i>Estadísticas
+                </button>
+            </li>
+        </ul>
+
+        <!-- Contenido de pestañas -->
+        <div class="tab-content">
+            <!-- Pestaña Reservas -->
+            <div class="tab-pane fade show active" id="reservations">
+                <div class="card">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-list me-2 text-primary"></i>
+                            Listado de Reservas
+                        </h5>
+                        <div>
+                            <button class="btn btn-outline-primary btn-sm me-2" onclick="loadAdminData()">
+                                <i class="fas fa-sync-alt me-1"></i>Actualizar
+                            </button>
+                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#newReservationModal">
+                                <i class="fas fa-plus me-1"></i>Nueva Reserva
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- Filtros -->
+                        <div class="btn-group mb-3">
+                            <button class="btn btn-primary" onclick="filterReservations('all')">Todas</button>
+                            <button class="btn btn-outline-warning" onclick="filterReservations('pending')">Pendientes</button>
+                            <button class="btn btn-outline-success" onclick="filterReservations('confirmed')">Confirmadas</button>
+                            <button class="btn btn-outline-danger" onclick="filterReservations('cancelled')">Canceladas</button>
+                        </div>
+
+                        <!-- Tabla de reservas -->
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Cliente</th>
+                                        <th>Servicio</th>
+                                        <th>Fecha</th>
+                                        <th>Hora</th>
+                                        <th>Estado</th>
+                                        <th>Notas</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reservationsTableBody">
+                                    <tr>
+                                        <td colspan="7" class="text-center py-4">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Cargando...</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pestaña Usuarios -->
+            <div class="tab-pane fade" id="users">
+                <div class="card">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-users-cog me-2 text-primary"></i>
+                            Gestión de Usuarios
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="usersList" class="row"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pestaña Estadísticas -->
+            <div class="tab-pane fade" id="stats">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-white">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-chart-pie me-2 text-primary"></i>
+                                    Distribución por Estado
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="statusChart" style="height: 300px;"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-white">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-chart-line me-2 text-primary"></i>
+                                    Reservas Recientes
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="recentStats"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Nueva Reserva -->
+    <div class="modal fade" id="newReservationModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-plus-circle me-2"></i>
+                        Nueva Reserva
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="newReservationForm">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Nombre del Cliente</label>
+                            <input type="text" class="form-control" id="clientName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email del Cliente</label>
+                            <input type="email" class="form-control" id="clientEmail" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Servicio</label>
+                            <select class="form-select" id="service" required>
+                                <option value="">Seleccione...</option>
+                                <option value="Consulta General">Consulta General</option>
+                                <option value="Mantenimiento">Mantenimiento</option>
+                                <option value="Reparación">Reparación</option>
+                                <option value="Instalación">Instalación</option>
+                            </select>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Fecha</label>
+                                <input type="date" class="form-control" id="reservationDate" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Hora</label>
+                                <select class="form-select" id="reservationTime" required>
+                                    <option value="">Seleccione...</option>
+                                    <option value="09:00">09:00</option>
+                                    <option value="10:00">10:00</option>
+                                    <option value="11:00">11:00</option>
+                                    <option value="12:00">12:00</option>
+                                    <option value="13:00">13:00</option>
+                                    <option value="14:00">14:00</option>
+                                    <option value="15:00">15:00</option>
+                                    <option value="16:00">16:00</option>
+                                    <option value="17:00">17:00</option>
+                                    <option value="18:00">18:00</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Notas</label>
+                            <textarea class="form-control" id="notes" rows="2"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/reservations.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>
